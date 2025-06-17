@@ -6,6 +6,8 @@
 #include <functional>
 #include <map>
 #include <list>
+#include <cctype>
+#include <algorithm>
 
 struct INumberReader
 {
@@ -16,16 +18,6 @@ struct INumberReader
 struct NumberReader: public INumberReader
 {
     std::vector<int> numbers;
-    bool is_integer(std::string& input_str) const
-    {
-        for(int i = 0; i < input_str.size(); i++)
-            if(input_str[i] == '-' && i != 0 ||                 // checking if a character is not minus at the beginning
-               input_str[i] < '0' && input_str[i] != '-' ||     // checking if a character is not ASCII zero or greater or minus
-               input_str[i] > '9' && input_str[i] != '-')       // checking if a character is not ASCII nine or lesser or minus
-                return false;
-
-        return true;
-    }
 
     std::vector<int> read(const std::string& file_name) override
     {
@@ -48,6 +40,15 @@ struct NumberReader: public INumberReader
         return this->numbers;
     }
 
+private:
+    bool is_integer(std::string& input_str) const
+    {
+        for(int i = 0; i < input_str.size(); i++)
+            if(!std::isdigit(input_str[i]))
+                return false;
+
+        return true;
+    }
 };
 
 struct INumberFilter
@@ -77,15 +78,6 @@ struct GreaterThanFilter: public INumberFilter
     int reference_number;
     GreaterThanFilter(int ref_number) : reference_number(ref_number) {}
 
-    // MOVE TO FACTORY!!!
-    // Constructor that parses argv command argument
-    GreaterThanFilter(char* argv)
-    {
-        std::string ref_num = argv;
-        ref_num.erase(ref_num.begin(), ref_num.begin()+2);
-        reference_number = std::stoi(ref_num);
-    }
-
     bool keep(int number) const override
     {
         return number > reference_number;
@@ -94,7 +86,7 @@ struct GreaterThanFilter: public INumberFilter
 
 class FilterFactory
 {
-    using Factory = std::function<std::unique_ptr<INumberFilter>(char*)>;
+    using Factory = std::function<std::unique_ptr<INumberFilter>(const std::string&)>;
     std::map<std::string, Factory> filter_registry;
 
     FilterFactory() = default;
@@ -113,9 +105,16 @@ public:
         this->filter_registry[filter_type] = f;
     }
 
-    std::unique_ptr<INumberFilter> create(const std::string& filter_type, char* is)
+    std::unique_ptr<INumberFilter> create(const std::string& filter_type)
     {
-        return this->filter_registry[filter_type](is);
+        for(auto& filter : filter_registry)
+        {
+            if(filter_type.starts_with(filter.first))
+                return this->filter_registry[filter.first](filter_type);
+        }
+
+        std::cerr << "ERROR: No registered filter for " << filter_type << " !\n";
+        exit(1);
     }
 };
 
@@ -173,29 +172,31 @@ struct NumberProcessor
 int main(int argc, char** argv)
 {
     // Throw a note on program usage if the required arguments haven't been provided, and close the program.
-    // if(argc != 3)
-    // {
-    //     std::cerr << "Usage: " << argv[0] << " <filter>" << " <file_name>\n"
-    //               << "where\n\t<filter> - name of a filter (ODD, EVEN, GT<n>);\n"
-    //               << "\t<file_name> - name of the text file with numbers;";
-    //     return -1;
-    // }
+    if(argc != 3)
+    {
+        std::cerr << "Usage: " << argv[0] << " <filter>" << " <file_name>\n"
+                  << "where\n\t<filter> - name of a filter (ODD, EVEN, GT<n>);\n"
+                  << "\t<file_name> - name of the text file with numbers;";
+        return -1;
+    }
 
     FilterFactory& filter_factory = FilterFactory::instance();
-    filter_factory.register_filter("ODD", [](char* is)
+    filter_factory.register_filter("ODD", [](const std::string& is)
     {
         return std::make_unique<OddFilter>();
     });
-    filter_factory.register_filter("EVEN", [](char* is)
+    filter_factory.register_filter("EVEN", [](const std::string& is)
     {
         return std::make_unique<EvenFilter>();
     });
-    filter_factory.register_filter("GT5", [argv](char* is)
+    filter_factory.register_filter("GT", [](const std::string& is)
     {
-        return std::make_unique<GreaterThanFilter>(is);
+        std::string ref_number = is;
+        return std::make_unique<GreaterThanFilter>(std::stoi(ref_number.substr(2)));
     });
     
     NumberReader number_reader;
+    std::vector<INumberObserver> obervers = {PrintObserver(), CountObserver()};
 
     std::vector<int> nums = number_reader.read(argv[2]);
 
@@ -203,7 +204,7 @@ int main(int argc, char** argv)
         std::cout << n << std::endl;
 
     std::cout << std::endl;
-    auto filter = filter_factory.create(argv[1], argv[1]);
+    auto filter = filter_factory.create(std::string(argv[1]));
 
     for(auto& n : nums)
         std::cout << filter->keep(n) << std::endl;
