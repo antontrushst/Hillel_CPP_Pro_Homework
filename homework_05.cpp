@@ -26,7 +26,7 @@ struct NumberReader: public INumberReader
         if(!input_file.is_open())
         {
             std::cerr << "ERROR: Couldn't open file!" << std::endl;
-            return this->numbers;
+            exit(1);
         }
 
         std::string temp;
@@ -149,7 +149,7 @@ struct CountObserver: public INumberObserver
 
     void on_finished() override
     {
-        std::cout << "Counted " << counter << " numbers in provided file.\n";
+        std::cout << "Counted " << counter << " numbers.\n";
     }
 };
 
@@ -167,23 +167,21 @@ struct NumberProcessor
     void run(std::string filter, std::string file)
     {
         std::vector<int> unfiltered_numbers = m_reader.read(file);
-        std::cout << "List of numbers to process:\n";
         for(auto number : unfiltered_numbers)
         {
-            for(auto observer : m_observers)
-                observer->on_number(number);
-
             if(m_filter->keep(number))
                 m_numbers.push_back(number);
         }
 
+        std::cout << "List of filtered numbers:\n";
+        for(auto number : m_numbers)
+        {
+            m_observers[0]->on_number(number);
+            m_observers[1]->on_number(number);
+        }
+
         for(auto observer : m_observers)
             observer->on_finished();
-
-        std::cout << "\nList of filtered numbers:\n";
-        for(auto number : m_numbers)
-            m_observers[0]->on_number(number);
-        m_observers[0]->on_finished();
     }
 };
 
@@ -209,8 +207,16 @@ int main(int argc, char** argv)
     });
     filter_factory.register_filter("GT", [](const std::string& is)
     {
-        std::string ref_number = is;
-        return std::make_shared<GreaterThanFilter>(std::stoi(ref_number.substr(2)));
+        std::string ref_number = is.substr(2);
+        for(auto& c : ref_number)
+        {
+            if(!std::isdigit(c))
+            {
+                std::cerr << "ERROR: GT filter requires a valid number as argument!\n";
+                exit(1);
+            }
+        }
+        return std::make_shared<GreaterThanFilter>(std::stoi(ref_number));
     });
     
     auto filter = filter_factory.create(std::string(argv[1]));
