@@ -86,7 +86,7 @@ struct GreaterThanFilter: public INumberFilter
 
 class FilterFactory
 {
-    using Factory = std::function<std::unique_ptr<INumberFilter>(const std::string&)>;
+    using Factory = std::function<std::shared_ptr<INumberFilter>(const std::string&)>;
     std::map<std::string, Factory> filter_registry;
 
     FilterFactory() = default;
@@ -105,7 +105,7 @@ public:
         this->filter_registry[filter_type] = f;
     }
 
-    std::unique_ptr<INumberFilter> create(const std::string& filter_type)
+    std::shared_ptr<INumberFilter> create(const std::string& filter_type)
     {
         for(auto& filter : filter_registry)
         {
@@ -156,16 +156,34 @@ struct CountObserver: public INumberObserver
 struct NumberProcessor
 {
     INumberReader& m_reader;
-    INumberFilter& m_filter;
-    std::vector<INumberObserver>& m_observers;
+    std::shared_ptr<INumberFilter>& m_filter;
+    std::vector<INumberObserver*>& m_observers;
+    std::vector<int> m_numbers;
 
-    NumberProcessor(INumberReader& reader, INumberFilter& filter, std::vector<INumberObserver>& observers)
+    NumberProcessor(INumberReader& reader, std::shared_ptr<INumberFilter>& filter, std::vector<INumberObserver*>& observers)
         : m_reader(reader), m_filter(filter), m_observers(observers) {}
     ~NumberProcessor() = default;
 
-    void run()
+    void run(std::string filter, std::string file)
     {
+        std::vector<int> unfiltered_numbers = m_reader.read(file);
+        std::cout << "List of numbers to process:\n";
+        for(auto number : unfiltered_numbers)
+        {
+            for(auto observer : m_observers)
+                observer->on_number(number);
 
+            if(m_filter->keep(number))
+                m_numbers.push_back(number);
+        }
+
+        for(auto observer : m_observers)
+            observer->on_finished();
+
+        std::cout << "\nList of filtered numbers:\n";
+        for(auto number : m_numbers)
+            m_observers[0]->on_number(number);
+        m_observers[0]->on_finished();
     }
 };
 
@@ -183,31 +201,28 @@ int main(int argc, char** argv)
     FilterFactory& filter_factory = FilterFactory::instance();
     filter_factory.register_filter("ODD", [](const std::string& is)
     {
-        return std::make_unique<OddFilter>();
+        return std::make_shared<OddFilter>();
     });
     filter_factory.register_filter("EVEN", [](const std::string& is)
     {
-        return std::make_unique<EvenFilter>();
+        return std::make_shared<EvenFilter>();
     });
     filter_factory.register_filter("GT", [](const std::string& is)
     {
         std::string ref_number = is;
-        return std::make_unique<GreaterThanFilter>(std::stoi(ref_number.substr(2)));
+        return std::make_shared<GreaterThanFilter>(std::stoi(ref_number.substr(2)));
     });
     
-    NumberReader number_reader;
-    std::vector<INumberObserver> obervers = {PrintObserver(), CountObserver()};
-
-    std::vector<int> nums = number_reader.read(argv[2]);
-
-    for(auto& n : nums)
-        std::cout << n << std::endl;
-
-    std::cout << std::endl;
     auto filter = filter_factory.create(std::string(argv[1]));
+    
+    auto po = PrintObserver();
+    auto co = CountObserver();
+    std::vector<INumberObserver*> observers = {&po, &co};
+    
+    NumberReader number_reader;
 
-    for(auto& n : nums)
-        std::cout << filter->keep(n) << std::endl;
+    NumberProcessor num_proc(number_reader, filter, observers);
+    num_proc.run(argv[1], argv[2]);
     
     return 0;
 }
