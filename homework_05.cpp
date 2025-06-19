@@ -208,14 +208,22 @@ int main(int argc, char** argv)
     filter_factory.register_filter("GT", [](const std::string& is)
     {
         std::string ref_number = is.substr(2);
-        for(auto& c : ref_number)
+
+        if(ref_number.empty())
+        {
+                std::cerr << "ERROR: GT filter requires a valid number as argument!\n";
+                exit(1);
+        }
+
+        std::for_each(ref_number.begin(), ref_number.end(), [](char& c)
         {
             if(!std::isdigit(c))
             {
                 std::cerr << "ERROR: GT filter requires a valid number as argument!\n";
                 exit(1);
             }
-        }
+        });
+        
         return std::make_shared<GreaterThanFilter>(std::stoi(ref_number));
     });
     
