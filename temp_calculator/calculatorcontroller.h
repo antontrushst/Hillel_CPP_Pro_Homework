@@ -2,7 +2,6 @@
 #define CALCULATORCONTROLLER_H
 
 #include <QObject>
-#include <QLineEdit>
 
 #include "calculatormodel.h"
 
@@ -10,7 +9,7 @@ class calculatorcontroller : public QObject
 {
     Q_OBJECT
 public:
-    explicit calculatorcontroller(calculatormodel* model, QLineEdit* lineEdit, QObject *parent = nullptr);
+    explicit calculatorcontroller(calculatormodel* model, QObject *parent = nullptr);
     Q_INVOKABLE void convert(QString what_field);
     Q_INVOKABLE QString get_field_Celsius();
     Q_INVOKABLE void set_field_Celsius(QString Celsius_val);
@@ -21,7 +20,6 @@ public:
 
 private:
     calculatormodel* model;
-    QLineEdit* lineEdit;
 };
 
 #endif // CALCULATORCONTROLLER_H

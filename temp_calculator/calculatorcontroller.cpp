@@ -1,7 +1,7 @@
 #include "calculatorcontroller.h"
 
-calculatorcontroller::calculatorcontroller(calculatormodel* model, QLineEdit* lineEdit, QObject *parent)
-    : model(model), lineEdit(lineEdit), QObject{parent}
+calculatorcontroller::calculatorcontroller(calculatormodel* model, QObject *parent)
+    : model(model), QObject{parent}
 {}
 
 void calculatorcontroller::convert(QString what_field)
@@ -30,8 +30,10 @@ QString calculatorcontroller::get_field_Celsius()
 
 void calculatorcontroller::set_field_Celsius(QString Celsius_val)
 {
-    lineEdit->setInputMask("999");
-    this->model->set_field_Celsius(lineEdit->text());
+    // lineEdit->setText(Celsius_val);
+    // // lineEdit->setInputMask("999");
+    // lineEdit->setValidator(this->model->validator_Celsius);
+    this->model->set_field_Celsius(Celsius_val);
 }
 
 QString calculatorcontroller::get_field_Fahrenheit()

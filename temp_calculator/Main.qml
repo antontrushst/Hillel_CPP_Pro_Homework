@@ -9,8 +9,6 @@ Window {
     color: "darkgrey"
     title: qsTr("temp_calculator")
 
-
-
     ColumnLayout {
         anchors.centerIn: parent
         anchors.margins: 10
@@ -43,6 +41,8 @@ Window {
                     TextField {
                         anchors.centerIn: parent
                         id: field_Celsius
+                        validator: RegularExpressionValidator { regularExpression: /^(-[0-9]|-1[0-9][0-9]|-2[0-9]|-2[0-6][0-9]|-27[0-3]|\d*)$/ }
+                        inputMask: validator.toString
                         onTextEdited: {
                             controller.set_field_Celsius(field_Celsius.text)
                             controller.convert("Celsius")
@@ -80,6 +80,8 @@ Window {
                     TextField {
                         anchors.centerIn: parent
                         id: field_Fahrenheit
+                        validator: RegularExpressionValidator { regularExpression: /^(-[0-9]|-1[0-9][0-9]|-2[0-9][0-9]|-3[0-9][0-9]|-4[0-9]|-4[0-4][0-9]|-45[0-9]|\d*)$/ }
+                        inputMask: validator.toString
                         onTextEdited: {
                             controller.set_field_Fahrenheit(field_Fahrenheit.text)
                             controller.convert("Fahrenheit")
@@ -117,6 +119,8 @@ Window {
                     TextField {
                         anchors.centerIn: parent
                         id: field_Kelvin
+                        validator: RegularExpressionValidator { regularExpression: /^(\d*)$/ }
+                        inputMask: validator.toString
                         onTextEdited: {
                             controller.set_field_Kelvin(field_Kelvin.text)
                             controller.convert("Kelvin")

@@ -10,8 +10,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     calculatormodel* model = new calculatormodel(0, 0, 0);
-    QLineEdit* lineEdit = new QLineEdit();
-    calculatorcontroller* controller = new calculatorcontroller(model, lineEdit);
+    calculatorcontroller* controller = new calculatorcontroller(model);
 
     QQmlApplicationEngine engine;
     QObject::connect(
